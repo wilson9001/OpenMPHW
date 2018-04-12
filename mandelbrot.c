@@ -35,11 +35,16 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdint.h>
+#include <time.h>
 
-int main(int argc, char* argv[])
+typedef unsigned char PIXEL[6];
+const int THREADCOUNT = 1;
+
+int main(int argc, char *argv[])
 {
   /* Parse the command line arguments. */
-  if (argc != 8) {
+  if (argc != 8)
+  {
     printf("Usage:   %s <xmin> <xmax> <ymin> <ymax> <maxiter> <xres> <out.ppm>\n", argv[0]);
     printf("Example: %s 0.27085 0.27100 0.004640 0.004810 1000 1024 pic.ppm\n", argv[0]);
     exit(EXIT_FAILURE);
@@ -56,62 +61,116 @@ int main(int argc, char* argv[])
 
   /* Image size, width is given, height is computed. */
   const int xres = atoi(argv[6]);
-  const int yres = (xres*(ymax-ymin))/(xmax-xmin);
+  const int yres = (xres * (ymax - ymin)) / (xmax - xmin);
+
+  /* Precompute pixel width and height. */
+  double dx = (xmax - xmin) / xres;
+  double dy = (ymax - ymin) / yres;
+
+  //PIXEL **image = malloc(sizeof(PIXEL) * yres);
+
+  PIXEL **image = malloc(yres * sizeof(PIXEL *));
+	image[0] = malloc(yres * xres * sizeof(PIXEL));
+	for(int a = 1; a < yres; a++)
+  {
+		image[a] = image[0] + a * xres;
+  }
+
+  double x, y; /* Coordinates of the current point in the complex plane. */
+  //double u, v; /* Coordinates of the iterated point. */
+  int i, j; /* Pixel counters */
+  int k;    /* Iteration counter */
+
+  time_t startTime = time(NULL);
+  printf("Computation beginning\n");
+  for (j = 0; j < yres; j++)
+  {
+    y = ymax - j * dy;
+    for (i = 0; i < xres; i++)
+    {
+      double u = 0.0;
+      double v = 0.0;
+      double u2 = u * u;
+      double v2 = v * v;
+      x = xmin + i * dx;
+      /* iterate the point */
+      for (k = 1; k < maxiter && (u2 + v2 < 4.0); k++)
+      {
+        v = 2 * u * v + y;
+        u = u2 - v2 + x;
+        u2 = u * u;
+        v2 = v * v;
+      };
+      /* compute  pixel color and write it to file */
+      if (k >= maxiter)
+      {
+        /* interior */
+        //const unsigned char black[] = {0, 0, 0, 0, 0, 0};
+        //fwrite(black, 6, 1, fp);
+        for(int z = 0; z < 6; z++)
+        {
+          image[j][i][z] = 0;
+        }
+      }
+      else
+      {
+        /* exterior */
+        //unsigned char color[6];
+        /*PIXEL color;
+        color[0] = k >> 8;
+        color[1] = k & 255;
+        color[2] = k >> 8;
+        color[3] = k & 255;
+        color[4] = k >> 8;
+        color[5] = k & 255;*/
+
+        image[j][i][0] = k >> 8;
+        image[j][i][1] = k & 255;
+        image[j][i][2] = k >> 8;
+        image[j][i][3] = k & 255;
+        image[j][i][4] = k >> 8;
+        image[j][i][5] = k & 255;
+
+        //fwrite(color, 6, 1, fp);
+      };
+    }
+  }
+
+  time_t endTime = time(NULL);
+  printf("Calculations completed in %f seconds with %d thread(s).\nWriting to file...\n", difftime(endTime, startTime), THREADCOUNT);
 
   /* The output file name */
-  const char* filename = argv[7];
+  const char *filename = argv[7];
 
   /* Open the file and write the header. */
-  FILE * fp = fopen(filename,"wb");
-  char *comment="# Mandelbrot set";/* comment should start with # */
+  FILE *fp = fopen(filename, "wb");
 
   /*write ASCII header to the file*/
   fprintf(fp,
           "P6\n# Mandelbrot, xmin=%lf, xmax=%lf, ymin=%lf, ymax=%lf, maxiter=%d\n%d\n%d\n%d\n",
           xmin, xmax, ymin, ymax, maxiter, xres, yres, (maxiter < 256 ? 256 : maxiter));
 
-  /* Precompute pixel width and height. */
-  double dx=(xmax-xmin)/xres;
-  double dy=(ymax-ymin)/yres;
-
-  double x, y; /* Coordinates of the current point in the complex plane. */
-  double u, v; /* Coordinates of the iterated point. */
-  int i,j; /* Pixel counters */
-  int k; /* Iteration counter */
-  for (j = 0; j < yres; j++) {
-    y = ymax - j * dy;
-    for(i = 0; i < xres; i++) {
-      double u = 0.0;
-      double v= 0.0;
-      double u2 = u * u;
-      double v2 = v*v;
-      x = xmin + i * dx;
-      /* iterate the point */
-      for (k = 1; k < maxiter && (u2 + v2 < 4.0); k++) {
-            v = 2 * u * v + y;
-            u = u2 - v2 + x;
-            u2 = u * u;
-            v2 = v * v;
-      };
-      /* compute  pixel color and write it to file */
-      if (k >= maxiter) {
-        /* interior */
-        const unsigned char black[] = {0, 0, 0, 0, 0, 0};
-        fwrite (black, 6, 1, fp);
-      }
-      else {
-        /* exterior */
-        unsigned char color[6];
-        color[0] = k >> 8;
-        color[1] = k & 255;
-        color[2] = k >> 8;
-        color[3] = k & 255;
-        color[4] = k >> 8;
-        color[5] = k & 255;
-        fwrite(color, 6, 1, fp);
-      };
+  //copy image arrage to file.
+  for (j = 0; j < yres; j++)
+  {
+    for (i = 0; i < xres; i++)
+    {
+      fwrite(image[j][i], 6, 1, fp);
     }
   }
+
   fclose(fp);
+
+  /*for(i = 0; i < yres; i++)
+  {
+    for(j = 0; j < xres; j++)
+    {
+		  free((void *)image[i][j]);
+    }
+	free((void *)image[j]);
+  }*/
+
+	//free((void *)image);
+
   return 0;
 }
