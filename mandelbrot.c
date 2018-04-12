@@ -1,3 +1,8 @@
+//Calculations completed in 203.000000 seconds with 1 thread.
+//Calculations completed in 199.000000 seconds with 2 threads.
+//Calculations completed in 213.000000 seconds with 4 threads.
+//Calculations completed in 183.000000 seconds with 8 threads.
+
 /*
   This program is an adaptation of the Mandelbrot program
   from the Programming Rosetta Stone, see
@@ -36,9 +41,10 @@
 #include <math.h>
 #include <stdint.h>
 #include <time.h>
+#include <omp.h>
 
 typedef unsigned char PIXEL[6];
-const int THREADCOUNT = 1;
+const static int THREADCOUNT = 8;
 
 int main(int argc, char *argv[])
 {
@@ -83,6 +89,9 @@ int main(int argc, char *argv[])
 
   time_t startTime = time(NULL);
   printf("Computation beginning\n");
+
+  omp_set_num_threads(8);
+  #pragma omp parallel for schedule(static)
   for (j = 0; j < yres; j++)
   {
     y = ymax - j * dy;
@@ -165,7 +174,7 @@ int main(int argc, char *argv[])
   {
     for(j = 0; j < xres; j++)
     {
-		  free((void *)image[i][j]);
+		  free(image[i][j]);
     }
 	free((void *)image[j]);
   }*/

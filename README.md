@@ -11,4 +11,4 @@ After getting the file issues solved, parallelize the code using OpenMP directiv
 
 Submit your code via Learning Suite. At the top of your code in a comment, report your compute times (not file writing) for 1, 2, 4, and 8 threads using the following command line:
 
-./mandelbrot 0.27085 0.27100 0.004640 0.004810 1000 8192 pic.ppm
+`./mandelbrot 0.27085 0.27100 0.004640 0.004810 1000 8192 pic.ppm`
