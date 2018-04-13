@@ -1,7 +1,7 @@
-//Calculations completed in 203.000000 seconds with 1 thread.
-//Calculations completed in 199.000000 seconds with 2 threads.
-//Calculations completed in 213.000000 seconds with 4 threads.
-//Calculations completed in 183.000000 seconds with 8 threads.
+//Calculations completed in 154.000000 seconds with 1 thread.
+//Calculations completed in 98.000000 seconds with 2 threads.
+//Calculations completed in 78.000000 seconds with 4 threads.
+//Calculations completed in 75.000000 seconds with 8 threads.
 
 /*
   This program is an adaptation of the Mandelbrot program
@@ -73,8 +73,7 @@ int main(int argc, char *argv[])
   double dx = (xmax - xmin) / xres;
   double dy = (ymax - ymin) / yres;
 
-  //PIXEL **image = malloc(sizeof(PIXEL) * yres);
-
+  //prepare pixel map for concurrent writing
   PIXEL **image = malloc(yres * sizeof(PIXEL *));
 	image[0] = malloc(yres * xres * sizeof(PIXEL));
 	for(int a = 1; a < yres; a++)
@@ -83,19 +82,18 @@ int main(int argc, char *argv[])
   }
 
   double x, y; /* Coordinates of the current point in the complex plane. */
-  //double u, v; /* Coordinates of the iterated point. */
-  int i, j; /* Pixel counters */
+  
   int k;    /* Iteration counter */
 
   time_t startTime = time(NULL);
   printf("Computation beginning\n");
 
   omp_set_num_threads(8);
-  #pragma omp parallel for schedule(static)
-  for (j = 0; j < yres; j++)
+  #pragma omp parallel for private(k,x,y) schedule(static)
+  for (int j = 0; j < yres; j++)
   {
     y = ymax - j * dy;
-    for (i = 0; i < xres; i++)
+    for (int i = 0; i < xres; i++)
     {
       double u = 0.0;
       double v = 0.0;
@@ -123,24 +121,12 @@ int main(int argc, char *argv[])
       }
       else
       {
-        /* exterior */
-        //unsigned char color[6];
-        /*PIXEL color;
-        color[0] = k >> 8;
-        color[1] = k & 255;
-        color[2] = k >> 8;
-        color[3] = k & 255;
-        color[4] = k >> 8;
-        color[5] = k & 255;*/
-
         image[j][i][0] = k >> 8;
         image[j][i][1] = k & 255;
         image[j][i][2] = k >> 8;
         image[j][i][3] = k & 255;
         image[j][i][4] = k >> 8;
         image[j][i][5] = k & 255;
-
-        //fwrite(color, 6, 1, fp);
       };
     }
   }
@@ -160,9 +146,9 @@ int main(int argc, char *argv[])
           xmin, xmax, ymin, ymax, maxiter, xres, yres, (maxiter < 256 ? 256 : maxiter));
 
   //copy image arrage to file.
-  for (j = 0; j < yres; j++)
+  for (int j = 0; j < yres; j++)
   {
-    for (i = 0; i < xres; i++)
+    for (int i = 0; i < xres; i++)
     {
       fwrite(image[j][i], 6, 1, fp);
     }
@@ -170,13 +156,13 @@ int main(int argc, char *argv[])
 
   fclose(fp);
 
-  /*for(i = 0; i < yres; i++)
+  /*for(int i = 0; i < yres; i++)
   {
-    for(j = 0; j < xres; j++)
+    for(int j = 0; j < xres; j++)
     {
 		  free(image[i][j]);
     }
-	free((void *)image[j]);
+	free((void *)image[i]);
   }*/
 
 	//free((void *)image);
